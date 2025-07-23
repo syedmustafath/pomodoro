@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Daily Pomodoro Tracker</title>
+  <style>
+    body {
+      background: #f8f8f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+    }
+    .container {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      max-width: 400px;
+      justify-content: center;
+    }
+    .circle {
+      width: 50px;
+      height: 50px;
+      background: #eee;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .circle.done {
+      background: #4caf50;
+      border-color: #4caf50;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="tracker"></div>
+
+  <script>
+    const NUM_POMODOROS = 8;
+    const tracker = document.getElementById('tracker');
+    const STORAGE_KEY = 'dailyPomodoro';
+    const RESET_HOUR = 12; // 12pm
+
+    function getTodayKey() {
+      const now = new Date();
+      const resetTime = new Date(now);
+      resetTime.setHours(RESET_HOUR, 0, 0, 0);
+      if (now < resetTime) {
+        resetTime.setDate(resetTime.getDate() - 1);
+      }
+      return 'pomodoro-' + resetTime.toISOString().split('T')[0];
+    }
+
+    function loadProgress() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const { key, done } = JSON.parse(saved);
+        if (key === getTodayKey()) return done;
+      }
+      return Array(NUM_POMODOROS).fill(false);
+    }
+
+    function saveProgress(done) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        key: getTodayKey(),
+        done
+      }));
+    }
+
+    function renderCircles() {
+      tracker.innerHTML = '';
+      const done = loadProgress();
+
+      done.forEach((isDone, i) => {
+        const circle = document.createElement('div');
+        circle.className = 'circle' + (isDone ? ' done' : '');
+        circle.addEventListener('click', () => {
+          done[i] = !done[i];
+          saveProgress(done);
+          renderCircles();
+        });
+        tracker.appendChild(circle);
+      });
+    }
+
+    renderCircles();
+  </script>
+</body>
+</html>
