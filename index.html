@@ -11,55 +11,44 @@
     body {
       background: #f8f8f8;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      height: 100vh;
       margin: 0;
       font-family: sans-serif;
-      padding: 1rem;
     }
-
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+    }
     .container {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      grid-template-columns: repeat(3, 60px);
       gap: 20px;
-      max-width: 400px;
-      width: 100%;
+      justify-content: center;
     }
-
     .circle {
-      width: 100%;
-      padding-top: 100%; /* makes it a square */
-      position: relative;
+      width: 60px;
+      height: 60px;
       background: #eee;
       border-radius: 50%;
-      border: 3px solid #ccc;
+      border: 2px solid #ccc;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+      transition: 0.2s;
     }
-
     .circle.done {
       background: #4caf50;
       border-color: #4caf50;
     }
-
-    .circle::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 60%;
-      height: 60%;
-      border-radius: 50%;
-    }
   </style>
 </head>
 <body>
+  <h1>Today's Sessions</h1>
   <div class="container" id="tracker"></div>
 
   <script>
-    const NUM_POMODOROS = 8;
+    const NUM_POMODOROS = 9;
     const tracker = document.getElementById('tracker');
     const STORAGE_KEY = 'dailyPomodoro';
     const RESET_HOUR = 12; // 12 PM
