@@ -10,24 +10,38 @@
   <style>
     body {
       background: #f8f8f8;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
       font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
     }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
     h1 {
-      margin-bottom: 20px;
       color: #333;
+      margin: 0;
     }
+
+    .history-button {
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      color: #4caf50;
+    }
+
     .container {
+      margin-top: 30px;
       display: grid;
       grid-template-columns: repeat(3, 60px);
       gap: 20px;
       justify-content: center;
     }
+
     .circle {
       width: 60px;
       height: 60px;
@@ -35,65 +49,151 @@
       border-radius: 50%;
       border: 2px solid #ccc;
       cursor: pointer;
-      transition: 0.2s;
       background-size: cover;
       background-position: center;
+      transition: 0.2s;
     }
+
     .circle.done {
       background-image: url('https://cdn-icons-png.flaticon.com/512/251/251899.png');
       background-color: transparent;
       border: none;
+      cursor: default;
+    }
+
+    /* History Overlay */
+    #historyModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #historyContent {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 300px;
+    }
+
+    #historyContent h2 {
+      margin-top: 0;
+    }
+
+    #historyList {
+      list-style: none;
+      padding: 0;
+    }
+
+    #historyList li {
+      padding: 5px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      float: right;
+      cursor: pointer;
+      color: #888;
     }
   </style>
 </head>
 <body>
-  <h1>Today's Sessions</h1>
+  <div class="top-bar">
+    <h1>Today's Sessions</h1>
+    <button class="history-button" onclick="showHistory()">History</button>
+  </div>
+
   <div class="container" id="tracker"></div>
+
+  <!-- History Modal -->
+  <div id="historyModal">
+    <div id="historyContent">
+      <button class="close-btn" onclick="hideHistory()">✕</button>
+      <h2>Last 7 Days</h2>
+      <ul id="historyList"></ul>
+    </div>
+  </div>
 
   <script>
     const NUM_POMODOROS = 9;
     const tracker = document.getElementById('tracker');
     const STORAGE_KEY = 'dailyPomodoro';
-    const RESET_HOUR = 12; // 12 PM
+    const RESET_HOUR = 12;
 
-    function getTodayKey() {
-      const now = new Date();
-      const resetTime = new Date(now);
+    function getTodayKey(date = new Date()) {
+      const resetTime = new Date(date);
       resetTime.setHours(RESET_HOUR, 0, 0, 0);
-      if (now < resetTime) resetTime.setDate(resetTime.getDate() - 1);
+      if (date < resetTime) resetTime.setDate(resetTime.getDate() - 1);
       return 'pomodoro-' + resetTime.toISOString().split('T')[0];
     }
 
-    function loadProgress() {
+    function loadAllProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const { key, done } = JSON.parse(saved);
-        if (key === getTodayKey()) return done;
-      }
-      return Array(NUM_POMODOROS).fill(false);
+      return saved ? JSON.parse(saved) : {};
     }
 
-    function saveProgress(done) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        key: getTodayKey(),
-        done
-      }));
+    function saveAllProgress(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadTodayProgress() {
+      const all = loadAllProgress();
+      const key = getTodayKey();
+      return all[key] || Array(NUM_POMODOROS).fill(false);
+    }
+
+    function saveTodayProgress(done) {
+      const all = loadAllProgress();
+      const key = getTodayKey();
+      all[key] = done;
+      saveAllProgress(all);
     }
 
     function renderCircles() {
       tracker.innerHTML = '';
-      const done = loadProgress();
+      const done = loadTodayProgress();
 
       done.forEach((isDone, i) => {
         const circle = document.createElement('div');
         circle.className = 'circle' + (isDone ? ' done' : '');
         circle.addEventListener('click', () => {
-          done[i] = !done[i];
-          saveProgress(done);
-          renderCircles();
+          if (!isDone) {
+            done[i] = true;
+            saveTodayProgress(done);
+            renderCircles();
+          }
         });
         tracker.appendChild(circle);
       });
+    }
+
+    function showHistory() {
+      const history = document.getElementById('historyModal');
+      const list = document.getElementById('historyList');
+      const all = loadAllProgress();
+      list.innerHTML = '';
+
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const key = getTodayKey(date);
+        const sessions = all[key]?.filter(Boolean).length || 0;
+        list.innerHTML += `<li><strong>${key.replace('pomodoro-', '')}:</strong> ${sessions} / ${NUM_POMODOROS}</li>`;
+      }
+
+      history.style.display = 'flex';
+    }
+
+    function hideHistory() {
+      document.getElementById('historyModal').style.display = 'none';
     }
 
     renderCircles();
