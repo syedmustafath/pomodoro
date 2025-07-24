@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#4caf50">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       background: #f8f8f8;
@@ -61,7 +62,6 @@
       cursor: default;
     }
 
-    /* History Overlay */
     #historyModal {
       position: fixed;
       top: 0;
@@ -78,21 +78,7 @@
       background: white;
       padding: 20px;
       border-radius: 10px;
-      width: 300px;
-    }
-
-    #historyContent h2 {
-      margin-top: 0;
-    }
-
-    #historyList {
-      list-style: none;
-      padding: 0;
-    }
-
-    #historyList li {
-      padding: 5px 0;
-      border-bottom: 1px solid #eee;
+      width: 350px;
     }
 
     .close-btn {
@@ -103,6 +89,13 @@
       cursor: pointer;
       color: #888;
     }
+
+    .streak {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+    }
   </style>
 </head>
 <body>
@@ -112,21 +105,22 @@
   </div>
 
   <div class="container" id="tracker"></div>
+  <div class="streak" id="streakDisplay">🔥 Streak: 0 days</div>
 
   <!-- History Modal -->
   <div id="historyModal">
     <div id="historyContent">
       <button class="close-btn" onclick="hideHistory()">✕</button>
-      <h2>Last 7 Days</h2>
-      <ul id="historyList"></ul>
+      <canvas id="historyChart" width="300" height="200"></canvas>
     </div>
   </div>
 
   <script>
     const NUM_POMODOROS = 9;
-    const tracker = document.getElementById('tracker');
     const STORAGE_KEY = 'dailyPomodoro';
     const RESET_HOUR = 12;
+    const tracker = document.getElementById('tracker');
+    const streakDisplay = document.getElementById('streakDisplay');
 
     function getTodayKey(date = new Date()) {
       const resetTime = new Date(date);
@@ -169,27 +163,70 @@
             done[i] = true;
             saveTodayProgress(done);
             renderCircles();
+            updateStreak();
           }
         });
         tracker.appendChild(circle);
       });
+
+      updateStreak();
+    }
+
+    function updateStreak() {
+      const all = loadAllProgress();
+      let streak = 0;
+
+      for (let i = 0; i < 365; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const key = getTodayKey(date);
+        const completed = all[key]?.filter(Boolean).length || 0;
+
+        if (completed === NUM_POMODOROS) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+
+      streakDisplay.innerText = `🔥 Streak: ${streak} day${streak !== 1 ? 's' : ''}`;
     }
 
     function showHistory() {
-      const history = document.getElementById('historyModal');
-      const list = document.getElementById('historyList');
       const all = loadAllProgress();
-      list.innerHTML = '';
+      const labels = [];
+      const data = [];
 
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const key = getTodayKey(date);
-        const sessions = all[key]?.filter(Boolean).length || 0;
-        list.innerHTML += `<li><strong>${key.replace('pomodoro-', '')}:</strong> ${sessions} / ${NUM_POMODOROS}</li>`;
+        labels.push(key.replace('pomodoro-', '').slice(5));
+        const completed = all[key]?.filter(Boolean).length || 0;
+        data.push(completed);
       }
 
-      history.style.display = 'flex';
+      const ctx = document.getElementById('historyChart').getContext('2d');
+      if (window.historyChart) window.historyChart.destroy(); // avoid duplicates
+
+      window.historyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Pomodoros',
+            data,
+            backgroundColor: '#4caf50'
+          }]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: true, max: NUM_POMODOROS }
+          }
+        }
+      });
+
+      document.getElementById('historyModal').style.display = 'flex';
     }
 
     function hideHistory() {
